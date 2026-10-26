@@ -1,0 +1,16 @@
+# Staging Environment Inventory
+[ci_servers]
+jenkins-ci ansible_host=YOUR_JENKINS_PUBLIC_IP ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/pos-deployer-key.pem
+
+[app_servers]
+pos-app ansible_host=YOUR_APP_PUBLIC_IP ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/pos-deployer-key.pem
+
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
+environment_name=staging
+app_port=8080
+db_host=YOUR_RDS_MYSQL_HOST
+db_port=3306
+db_name=posdb
+db_user=posadmin
+db_password=PosSecurePassword123!

@@ -1,0 +1,105 @@
+---
+- name: Setup CI/CD Automation Server (Jenkins, SonarQube, Maven, Docker)
+  hosts: ci_servers
+  become: true
+  tasks:
+    - name: Update apt repository and upgrade packages
+      apt:
+        update_cache: yes
+        upgrade: dist
+        cache_valid_time: 3600
+
+    - name: Install prerequisite packages
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - software-properties-common
+          - git
+          - maven
+          - openjdk-21-jdk
+        state: present
+
+    # Setup Docker
+    - name: Add Docker official GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker APT repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+
+    - name: Install Docker CE and plugins
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-compose-plugin
+        state: present
+
+    - name: Ensure Docker service is enabled and running
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Add ubuntu user to docker group
+      user:
+        name: ubuntu
+        groups: docker
+        append: yes
+
+    # Setup Jenkins
+    - name: Add Jenkins repository key
+      apt_key:
+        url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+        state: present
+
+    - name: Add Jenkins Debian repository
+      apt_repository:
+        repo: "deb https://pkg.jenkins.io/debian-stable binary/"
+        state: present
+
+    - name: Install Jenkins LTS
+      apt:
+        name: jenkins
+        state: present
+
+    - name: Add jenkins user to docker group (enables Docker commands inside pipelines)
+      user:
+        name: jenkins
+        groups: docker
+        append: yes
+
+    - name: Enable and start Jenkins service
+      systemd:
+        name: jenkins
+        state: started
+        enabled: yes
+
+    # Setup SonarQube in Docker
+    - name: Increase vm.max_map_count for SonarQube Elasticsearch
+      sysctl:
+        name: vm.max_map_count
+        value: '262144'
+        state: present
+        reload: yes
+
+    - name: Run SonarQube Community Edition Container
+      docker_container:
+        name: sonarqube
+        image: sonarqube:10.5-community
+        state: started
+        restart_policy: unless-stopped
+        published_ports:
+          - "9000:9000"
+        volumes:
+          - sonarqube_data:/opt/sonarqube/data
+          - sonarqube_extensions:/opt/sonarqube/extensions
+          - sonarqube_logs:/opt/sonarqube/logs

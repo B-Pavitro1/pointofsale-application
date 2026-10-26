@@ -1,0 +1,41 @@
+# Build and packaging
+target/
+*.class
+*.jar
+*.war
+
+# IDE and Editor files
+.idea/
+*.iml
+.vscode/
+*.swp
+*~
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Environment and sensitive files
+*.env*
+*.pem
+*.key
+*.id_rsa
+secrets.tfvars
+terraform.tfvars
+
+# Terraform state
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Docker
+docker/data/
+
+# Logs
+logs/
+*.log
+
+# SonarQube & Jacoco reports
+.scannerwork/
+target/site/jacoco/

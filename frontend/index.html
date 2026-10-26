@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise POS - Cloud Point of Sale System</title>
+    <!-- Bootstrap 5.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-light">
+
+    <!-- Top Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
+                <i class="bi bi-cart4 fs-3 me-2"></i> CloudPOS 3-Tier
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navContent">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navContent">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0" id="mainNavTabs">
+                    <li class="nav-item">
+                        <button class="nav-link active btn btn-link" data-tab="posTab" id="navPos">
+                            <i class="bi bi-shop me-1"></i> Register (POS)
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link btn btn-link" data-tab="inventoryTab" id="navInventory">
+                            <i class="bi bi-boxes me-1"></i> Inventory & Stock
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link btn btn-link" data-tab="salesTab" id="navSales">
+                            <i class="bi bi-receipt-cutoff me-1"></i> Sales History
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link btn btn-link" data-tab="dashboardTab" id="navDashboard">
+                            <i class="bi bi-graph-up-arrow me-1"></i> Dashboard
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="d-flex align-items-center gap-3">
+                    <span id="userBadge" class="badge bg-light text-primary px-3 py-2 fs-6 rounded-pill d-none">
+                        <i class="bi bi-person-circle me-1"></i> <span id="userName">User</span>
+                        <span id="roleBadge" class="badge bg-secondary ms-1">ROLE</span>
+                    </span>
+                    <button class="btn btn-outline-light btn-sm" id="authBtn" onclick="handleAuthAction()">
+                        <i class="bi bi-box-arrow-in-right me-1"></i> Login
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Global Alert Container -->
+    <div class="container mt-3" id="alertContainer"></div>
+
+    <!-- Main Container -->
+    <div class="container-fluid py-3">
+
+        <!-- TAB 1: POS REGISTER -->
+        <div class="tab-pane active" id="posTab">
+            <div class="row g-3">
+                <!-- Left Pane: Product Catalog & Search -->
+                <div class="col-lg-8">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-body">
+                            <!-- Search & Category Filters -->
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-7">
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                                        <input type="text" id="searchInput" class="form-control" placeholder="Search by Product Name, SKU, or Barcode...">
+                                    </div>
+                                </div>
+                                <div class="col-md-5">
+                                    <select id="categoryFilter" class="form-select">
+                                        <option value="ALL">All Categories</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Product Cards Grid -->
+                            <div class="row row-cols-1 row-cols-md-3 row-cols-xl-4 g-3" id="productList">
+                                <div class="col-12 text-center py-5 text-muted">
+                                    <div class="spinner-border text-primary" role="status"></div>
+                                    <p class="mt-2">Loading catalog...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Pane: Active Cart & Totals -->
+                <div class="col-lg-4">
+                    <div class="card shadow-sm border-0 sticky-top" style="top: 80px;">
+                        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
+                            <h5 class="mb-0 fw-bold"><i class="bi bi-cart-fill me-2"></i> Current Cart</h5>
+                            <button class="btn btn-sm btn-outline-danger" onclick="clearCart()">
+                                <i class="bi bi-trash"></i> Clear
+                            </button>
+                        </div>
+                        <div class="card-body p-0">
+                            <!-- Cart Items List -->
+                            <div id="cartItemsList" class="cart-items-scroll px-3 py-2">
+                                <div class="text-center text-muted py-5">
+                                    <i class="bi bi-basket3 fs-1 d-block mb-2 text-secondary"></i>
+                                    Cart is empty. Click a product to add it.
+                                </div>
+                            </div>
+
+                            <!-- Cart Calculation Summary -->
+                            <div class="border-top p-3 bg-light">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span class="text-muted">Subtotal:</span>
+                                    <span class="fw-semibold" id="cartSubtotal">$0.00</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span class="text-muted">Tax (8%):</span>
+                                    <span class="fw-semibold" id="cartTax">$0.00</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="text-muted">Discount ($):</span>
+                                    <input type="number" id="cartDiscount" class="form-control form-control-sm text-end" style="width: 100px;" value="0.00" min="0" step="0.50" onchange="updateCartTotals()">
+                                </div>
+                                <hr class="my-2">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <span class="fs-5 fw-bold">Grand Total:</span>
+                                    <span class="fs-4 fw-bold text-success" id="cartTotal">$0.00</span>
+                                </div>
+                                <button class="btn btn-success btn-lg w-100 fw-bold shadow-sm" id="checkoutBtn" onclick="openCheckoutModal()" disabled>
+                                    <i class="bi bi-credit-card-2-front me-2"></i> Proceed to Checkout
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: INVENTORY & STOCK -->
+        <div class="tab-pane d-none" id="inventoryTab">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-boxes text-primary me-2"></i> Inventory Catalog & Stock Tracking</h5>
+                    <button class="btn btn-primary btn-sm" onclick="openNewProductModal()">
+                        <i class="bi bi-plus-circle me-1"></i> Add New Product
+                    </button>
+                </div>
+                <div class="card-body">
+                    <!-- Low Stock Alert Banner -->
+                    <div id="lowStockAlertBanner" class="alert alert-warning d-none" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <strong>Low Stock Warning:</strong> Some products have fallen below their restocking threshold.
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>SKU</th>
+                                    <th>Barcode</th>
+                                    <th>Product Name</th>
+                                    <th>Category</th>
+                                    <th>Price</th>
+                                    <th>Cost</th>
+                                    <th>Current Stock</th>
+                                    <th>Status</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventoryTableBody">
+                                <tr><td colspan="9" class="text-center py-4">Loading inventory...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: SALES HISTORY -->
+        <div class="tab-pane d-none" id="salesTab">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-receipt-cutoff text-primary me-2"></i> Sales Transactions & Receipts</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Invoice #</th>
+                                    <th>Cashier</th>
+                                    <th>Items Sold</th>
+                                    <th>Total ($)</th>
+                                    <th>Payment Method</th>
+                                    <th>Txn Reference</th>
+                                    <th>Timestamp</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="salesTableBody">
+                                <tr><td colspan="8" class="text-center py-4">Loading sales history...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: DASHBOARD -->
+        <div class="tab-pane d-none" id="dashboardTab">
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm bg-primary text-white p-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-white-50 mb-1">Total Sales</h6>
+                                <h3 class="fw-bold mb-0" id="dashTotalSales">0</h3>
+                            </div>
+                            <i class="bi bi-cart-check fs-1 text-white-50"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm bg-success text-white p-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-white-50 mb-1">Total Revenue</h6>
+                                <h3 class="fw-bold mb-0" id="dashTotalRevenue">$0.00</h3>
+                            </div>
+                            <i class="bi bi-cash-stack fs-1 text-white-50"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm bg-info text-white p-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-white-50 mb-1">Active Products</h6>
+                                <h3 class="fw-bold mb-0" id="dashTotalProducts">0</h3>
+                            </div>
+                            <i class="bi bi-box-seam fs-1 text-white-50"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm bg-danger text-white p-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-white-50 mb-1">Low Stock Alerts</h6>
+                                <h3 class="fw-bold mb-0" id="dashLowStock">0</h3>
+                            </div>
+                            <i class="bi bi-exclamation-octagon fs-1 text-white-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: LOGIN -->
+    <div class="modal fade" id="loginModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow border-0">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-lock-fill me-2"></i> System Authentication</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div id="loginError" class="alert alert-danger d-none"></div>
+                    <form id="loginForm" onsubmit="handleLoginSubmit(event)">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Username</label>
+                            <input type="text" id="loginUsername" class="form-control" placeholder="e.g. admin or cashier" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Password</label>
+                            <input type="password" id="loginPassword" class="form-control" placeholder="Enter password" required>
+                        </div>
+                        <div class="text-muted small mb-3">
+                            <strong>Demo Accounts:</strong><br>
+                            - Admin: <code>admin</code> / <code>password123</code><br>
+                            - Cashier: <code>cashier</code> / <code>password123</code><br>
+                            - Stock Mgr: <code>manager</code> / <code>password123</code>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 fw-bold" id="loginSubmitBtn">
+                            Sign In
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CHECKOUT & PAYMENT -->
+    <div class="modal fade" id="checkoutModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow border-0">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="bi bi-cash-coin me-2"></i> Complete Payment</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="text-center mb-4">
+                        <span class="text-muted">Total Amount Due</span>
+                        <h2 class="fw-bold text-success" id="checkoutModalTotal">$0.00</h2>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Payment Method</label>
+                        <select id="checkoutPaymentMethod" class="form-select" onchange="handlePaymentMethodChange()">
+                            <option value="CASH">Cash Payment</option>
+                            <option value="CARD">Credit/Debit Card (Mock Terminal)</option>
+                            <option value="MOCK_GATEWAY">Online Mock Payment Gateway</option>
+                        </select>
+                    </div>
+
+                    <div id="cashFields" class="mb-3">
+                        <label class="form-label fw-semibold">Cash Tendered ($)</label>
+                        <input type="number" id="cashTenderedInput" class="form-control" step="0.50" min="0" placeholder="0.00" oninput="calculateChange()">
+                        <div class="d-flex justify-content-between mt-2">
+                            <span class="text-muted">Change Due:</span>
+                            <span class="fw-bold fs-5 text-primary" id="changeDueText">$0.00</span>
+                        </div>
+                    </div>
+
+                    <div id="cardFields" class="mb-3 d-none">
+                        <div class="alert alert-info small mb-0">
+                            <i class="bi bi-shield-check me-1"></i> Safe EMV Terminal Simulation. No card numbers or CVVs stored.
+                        </div>
+                    </div>
+
+                    <button class="btn btn-success btn-lg w-100 fw-bold mt-3" id="confirmPaymentBtn" onclick="submitCheckout()">
+                        <i class="bi bi-check-circle me-1"></i> Authorize & Complete Sale
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: RECEIPT -->
+    <div class="modal fade" id="receiptModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow border-0">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-receipt me-2"></i> Official Receipt</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 font-monospace" id="receiptContent">
+                    <!-- Dynamic receipt markup -->
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="window.print()">
+                        <i class="bi bi-printer me-1"></i> Print Receipt
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD PRODUCT -->
+    <div class="modal fade" id="newProductModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow border-0">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-plus-square me-2"></i> Add New Product</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="newProductForm" onsubmit="handleCreateProduct(event)">
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold">SKU *</label>
+                                <input type="text" id="npSku" class="form-control form-control-sm" required placeholder="e.g. SNK-001">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold">Barcode</label>
+                                <input type="text" id="npBarcode" class="form-control form-control-sm" placeholder="Scan or enter barcode">
+                            </div>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small fw-semibold">Product Name *</label>
+                            <input type="text" id="npName" class="form-control form-control-sm" required placeholder="e.g. Colombian Roast">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small fw-semibold">Category *</label>
+                            <input type="text" id="npCategory" class="form-control form-control-sm" required placeholder="e.g. Beverages">
+                        </div>
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold">Selling Price ($) *</label>
+                                <input type="number" id="npPrice" class="form-control form-control-sm" step="0.01" min="0.01" required>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold">Cost Price ($) *</label>
+                                <input type="number" id="npCost" class="form-control form-control-sm" step="0.01" min="0" required>
+                            </div>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold">Initial Stock *</label>
+                                <input type="number" id="npStock" class="form-control form-control-sm" min="0" value="25" required>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold">Low Stock Threshold</label>
+                                <input type="number" id="npThreshold" class="form-control form-control-sm" min="1" value="10" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 fw-bold">Save Product</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ADJUST STOCK -->
+    <div class="modal fade" id="adjustStockModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow border-0">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title"><i class="bi bi-box-arrow-in-down me-2"></i> Adjust Stock</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="adjustStockForm" onsubmit="handleAdjustStock(event)">
+                        <input type="hidden" id="asProductId">
+                        <h6 id="asProductName" class="fw-bold mb-3">Product Name</h6>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Operation</label>
+                            <select id="asOperation" class="form-select">
+                                <option value="ADD">Restock (Add to current quantity)</option>
+                                <option value="SET">Set (Override current quantity)</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Quantity</label>
+                            <input type="number" id="asQuantity" class="form-control" min="1" value="10" required>
+                        </div>
+                        <button type="submit" class="btn btn-dark w-100 fw-bold">Update Stock</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5.3 Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

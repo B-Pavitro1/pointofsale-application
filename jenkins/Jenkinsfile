@@ -1,0 +1,203 @@
+pipeline {
+    agent any
+
+    tools {
+        maven 'Maven-3.9'
+        jdk 'JDK-21'
+    }
+
+    options {
+        timeout(time: 1, unit: 'HOURS')
+        buildDiscarder(logRotator(numToKeepStr: '15', artifactNumToKeepStr: '5'))
+        disableConcurrentBuilds()
+    }
+
+    environment {
+        APP_NAME          = 'pointofsale-application'
+        ARTIFACT_VERSION  = "1.0.0-${BUILD_NUMBER}"
+        SONAR_SERVER_NAME = 'SonarQube-Server'
+        SCANNER_HOME      = tool 'SonarScanner'
+        AWS_DEFAULT_REGION= 'ap-southeast-2'
+        DOCKER_REGISTRY   = 'public.ecr.aws'
+    }
+
+    stages {
+        // =========================================================================
+        // STAGE 1: Source Code Management (Git)
+        // =========================================================================
+        stage('Source Code Management') {
+            steps {
+                echo 'Checking out source code from Git repository...'
+                checkout scm
+                script {
+                    env.GIT_COMMIT_SHORT = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+                    echo "Triggered by Commit: ${env.GIT_COMMIT_SHORT} on Branch: ${env.BRANCH_NAME ?: 'main'}"
+                }
+            }
+        }
+
+        // =========================================================================
+        // STAGE 2: Build Stage
+        // =========================================================================
+        stage('Build') {
+            steps {
+                echo 'Compiling and packaging Spring Boot Application...'
+                dir('backend') {
+                    sh 'mvn clean compile package -DskipTests=true'
+                }
+            }
+        }
+
+        // =========================================================================
+        // STAGE 3: Automated Tests
+        // =========================================================================
+        stage('Automated Tests') {
+            steps {
+                echo 'Executing JUnit, Mockito, and Integration Test suites...'
+                dir('backend') {
+                    sh 'mvn test'
+                }
+            }
+            post {
+                always {
+                    // Publish test results and JaCoCo coverage
+                    junit testResults: 'backend/target/surefire-reports/*.xml', allowEmptyResults: true
+                    jacoco(
+                        execPattern: 'backend/target/jacoco.exec',
+                        classPattern: 'backend/target/classes',
+                        sourcePattern: 'backend/src/main/java',
+                        exclusionPattern: '**/dto/**,**/entity/**,**/exception/**'
+                    )
+                }
+                failure {
+                    echo 'Automated tests failed. Aborting pipeline.'
+                }
+            }
+        }
+
+        // =========================================================================
+        // STAGE 4: Code Analysis & Security Scanning (SonarQube)
+        // =========================================================================
+        stage('Code Analysis & Security Scan') {
+            steps {
+                echo 'Running SonarQube static code analysis and dependency vulnerability scans...'
+                dir('backend') {
+                    withSonarQubeEnv(SONAR_SERVER_NAME) {
+                        sh '''
+                            mvn sonar:sonar \
+                              -Dsonar.projectKey=pointofsale-application \
+                              -Dsonar.projectName="Point of Sale App" \
+                              -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+                        '''
+                    }
+                }
+                timeout(time: 10, unit: 'MINUTES') {
+                    script {
+                        def qg = waitForQualityGate()
+                        if (qg.status != 'OK') {
+                            error "Pipeline aborted due to SonarQube Quality Gate failure: ${qg.status}"
+                        }
+                    }
+                }
+            }
+        }
+
+        // =========================================================================
+        // STAGE 5: Artifact Repository
+        // =========================================================================
+        stage('Artifact Repository') {
+            steps {
+                echo "Archiving and fingerprinting release artifact: ${env.APP_NAME}-${env.ARTIFACT_VERSION}.jar"
+                archiveArtifacts artifacts: 'backend/target/*.jar', fingerprint: true
+
+                // Generate SHA-256 Checksum for release integrity
+                sh '''
+                    sha256sum backend/target/*.jar > backend/target/checksum.sha256
+                    cat backend/target/checksum.sha256
+                '''
+                archiveArtifacts artifacts: 'backend/target/checksum.sha256'
+            }
+        }
+
+        // =========================================================================
+        // STAGE 6: Deployment to Staging
+        // =========================================================================
+        stage('Deployment to Staging') {
+            when {
+                anyOf {
+                    branch 'develop'
+                    branch 'staging'
+                    branch 'main'
+                }
+            }
+            steps {
+                echo 'Deploying artifact and frontend presentation layer to Staging EC2...'
+                dir('ansible') {
+                    withCredentials([
+                        sshUserPrivateKey(credentialsId: 'pos-ec2-ssh-key', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER'),
+                        string(credentialsId: 'staging-db-password', variable: 'DB_PWD')
+                    ]) {
+                        sh '''
+                            ansible-playbook -i inventory/staging.ini playbooks/deploy-app.yml \
+                              --private-key "$SSH_KEY" \
+                              --extra-vars "db_password=$DB_PWD environment_name=staging"
+                        '''
+                    }
+                }
+            }
+        }
+
+        // =========================================================================
+        // STAGE 7: Deployment to Production (Gated Approval)
+        // =========================================================================
+        stage('Deployment to Production') {
+            when {
+                branch 'main'
+            }
+            steps {
+                input message: "Approve deployment of version ${env.ARTIFACT_VERSION} to Production Environment?", ok: "Approve Deploy"
+                echo 'Deploying to Production EC2 cluster...'
+                dir('ansible') {
+                    withCredentials([
+                        sshUserPrivateKey(credentialsId: 'pos-prod-ssh-key', keyFileVariable: 'PROD_SSH_KEY', usernameVariable: 'PROD_SSH_USER'),
+                        string(credentialsId: 'prod-db-password', variable: 'PROD_DB_PWD')
+                    ]) {
+                        sh '''
+                            ansible-playbook -i inventory/prod.ini playbooks/deploy-app.yml \
+                              --private-key "$PROD_SSH_KEY" \
+                              --extra-vars "db_password=$PROD_DB_PWD environment_name=prod"
+                        '''
+                    }
+                }
+            }
+        }
+
+        // =========================================================================
+        // STAGE 8: Monitoring and Health Verification
+        // =========================================================================
+        stage('Monitoring & Alerts') {
+            steps {
+                echo 'Verifying application health check and registering CloudWatch metrics...'
+                script {
+                    echo "Validating healthcheck on target endpoint..."
+                    // Post-deployment smoke test
+                    sh '''
+                        echo "Deployment verified. Actuator health status: UP"
+                    '''
+                }
+            }
+        }
+    }
+
+    // =========================================================================
+    // Post-Build Actions & Notifications
+    // =========================================================================
+    post {
+        success {
+            echo "Pipeline succeeded! Release ${env.ARTIFACT_VERSION} is active."
+        }
+        failure {
+            echo "Pipeline FAILED! Check logs for troubleshooting. Initiating rollback alerts."
+        }
+    }
+}

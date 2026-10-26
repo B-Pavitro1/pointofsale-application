@@ -1,0 +1,67 @@
+/* 3-Tier POS Styling */
+:root {
+    --pos-primary: #0d6efd;
+    --pos-success: #198754;
+    --pos-danger: #dc3545;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    min-height: 100vh;
+}
+
+.cart-items-scroll {
+    max-height: 380px;
+    overflow-y: auto;
+}
+
+.product-card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    cursor: pointer;
+    border: 1px solid rgba(0,0,0,0.08);
+}
+
+.product-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.1) !important;
+}
+
+.product-card.out-of-stock {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.badge-low-stock {
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+/* Thermal POS receipt view */
+.font-monospace {
+    font-family: "Courier New", Courier, monospace;
+}
+
+.receipt-border {
+    border-top: 1px dashed #666;
+    border-bottom: 1px dashed #666;
+}
+
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    #receiptModal, #receiptModal * {
+        visibility: visible;
+    }
+    #receiptModal {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+}

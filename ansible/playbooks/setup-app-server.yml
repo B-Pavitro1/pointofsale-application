@@ -1,0 +1,122 @@
+---
+- name: Setup Point of Sale Application Server (Java, Nginx, Systemd)
+  hosts: app_servers
+  become: true
+  tasks:
+    - name: Update apt cache and install base packages
+      apt:
+        update_cache: yes
+        name:
+          - curl
+          - git
+          - nginx
+          - openjdk-21-jre-headless
+        state: present
+
+    - name: Create non-root dedicated system user for Spring Boot
+      user:
+        name: posapp
+        system: yes
+        shell: /bin/false
+        home: /opt/pos
+
+    - name: Create application and log directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: posapp
+        group: posapp
+        mode: '0750'
+      loop:
+        - /opt/pos
+        - /opt/pos/frontend
+        - /var/log/pos
+
+    # Configure Systemd Service for Spring Boot JAR
+    - name: Deploy pos-app systemd service unit
+      copy:
+        dest: /etc/systemd/system/pos-app.service
+        content: |
+          [Unit]
+          Description=Point of Sale Spring Boot Application
+          After=network.target
+
+          [Service]
+          Type=simple
+          User=posapp
+          Group=posapp
+          WorkingDirectory=/opt/pos
+          Environment="SPRING_PROFILES_ACTIVE={{ environment_name }}"
+          Environment="DB_HOST={{ db_host }}"
+          Environment="DB_PORT={{ db_port }}"
+          Environment="DB_NAME={{ db_name }}"
+          Environment="DB_USERNAME={{ db_user }}"
+          Environment="DB_PASSWORD={{ db_password }}"
+          ExecStart=/usr/bin/java -XX:+UseG1GC -Xms256m -Xmx512m -jar /opt/pos/app.jar
+          SuccessExitStatus=143
+          Restart=always
+          RestartSec=10
+          StandardOutput=journal
+          StandardError=journal
+
+          [Install]
+          WantedBy=multi-user.target
+        mode: '0644'
+      notify: Reload systemd
+
+    # Configure Nginx Reverse Proxy
+    - name: Configure Nginx site for POS Web and API
+      copy:
+        dest: /etc/nginx/sites-available/pos-app.conf
+        content: |
+          server {
+              listen 80;
+              server_name _;
+
+              # Static Frontend Presentation Tier
+              location / {
+                  root /opt/pos/frontend;
+                  index index.html;
+                  try_files $uri $uri/ /index.html;
+              }
+
+              # Backend REST API Application Tier
+              location /api/ {
+                  proxy_pass http://127.0.0.1:{{ app_port | default('8080') }}/api/;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+              }
+
+              # Health Check Endpoint
+              location /actuator/health {
+                  proxy_pass http://127.0.0.1:{{ app_port | default('8080') }}/actuator/health;
+                  proxy_set_header Host $host;
+              }
+          }
+        mode: '0644'
+      notify: Restart nginx
+
+    - name: Enable Nginx site
+      file:
+        src: /etc/nginx/sites-available/pos-app.conf
+        dest: /etc/nginx/sites-enabled/pos-app.conf
+        state: link
+
+    - name: Remove default Nginx site configuration
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      notify: Restart nginx
+
+  handlers:
+    - name: Reload systemd
+      systemd:
+        daemon_reload: yes
+
+    - name: Restart nginx
+      systemd:
+        name: nginx
+        state: restarted
+        enabled: yes

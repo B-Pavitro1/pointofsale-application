@@ -1,0 +1,13 @@
+# Production Environment Inventory
+[app_servers]
+pos-app-prod ansible_host=YOUR_PROD_APP_IP ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/pos-prod-key.pem
+
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
+environment_name=prod
+app_port=8080
+db_host=YOUR_PROD_RDS_ENDPOINT
+db_port=3306
+db_name=posdb
+db_user=posadmin
+# db_password provided securely via vault or Jenkins credentials
