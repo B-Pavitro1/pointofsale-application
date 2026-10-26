@@ -1,5 +1,5 @@
 # Example Terraform variables for Development / Demo environment
-aws_region          = "us-east-1"
+aws_region          = "ap-southeast-2"
 environment         = "dev"
 key_name            = "pos-deployer-key"
 ssh_allowed_ip      = "0.0.0.0/0" # Change to your_ip/32 for enhanced security
