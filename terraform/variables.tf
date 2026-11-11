@@ -90,8 +90,31 @@ variable "db_username" {
 }
 
 variable "db_password" {
-  description = "Master MySQL database password (minimum 8 chars)"
+  description = "Master MySQL database password (minimum 8 chars, injected via TF_VAR_db_password or secrets.tfvars)"
   type        = string
   sensitive   = true
-  default     = "PosSecurePassword123!"
+}
+
+variable "multi_az" {
+  description = "Enable Multi-AZ deployment for high availability"
+  type        = bool
+  default     = false
+}
+
+variable "backup_retention_period" {
+  description = "Days of automated backup retention for RDS"
+  type        = number
+  default     = 1
+}
+
+variable "skip_final_snapshot" {
+  description = "Skip final snapshot when destroying RDS instance"
+  type        = bool
+  default     = true
+}
+
+variable "deletion_protection" {
+  description = "Enable deletion protection on RDS instance"
+  type        = bool
+  default     = false
 }

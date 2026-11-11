@@ -52,6 +52,7 @@
           Environment="DB_NAME={{ db_name }}"
           Environment="DB_USERNAME={{ db_user }}"
           Environment="DB_PASSWORD={{ db_password }}"
+          Environment="JWT_SECRET={{ jwt_secret | default('') }}"
           ExecStart=/usr/bin/java -XX:+UseG1GC -Xms256m -Xmx512m -jar /opt/pos/app.jar
           SuccessExitStatus=143
           Restart=always
@@ -61,7 +62,7 @@
 
           [Install]
           WantedBy=multi-user.target
-        mode: '0644'
+        mode: '0600'
       notify: Reload systemd
 
     # Configure Nginx Reverse Proxy
@@ -89,10 +90,16 @@
                   proxy_set_header X-Forwarded-Proto $scheme;
               }
 
-              # Health Check Endpoint
-              location /actuator/health {
+              # Health Check Endpoint (strictly permitted for ALB / smoke probes)
+              location = /actuator/health {
                   proxy_pass http://127.0.0.1:{{ app_port | default('8080') }}/actuator/health;
                   proxy_set_header Host $host;
+              }
+
+              # Deny all other internal actuator endpoints
+              location /actuator/ {
+                  deny all;
+                  return 404;
               }
           }
         mode: '0644'

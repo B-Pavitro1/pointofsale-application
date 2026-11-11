@@ -99,6 +99,40 @@ class InventoryServiceTest {
     }
 
     @Test
+    @DisplayName("Should allow setting stock quantity to 0")
+    void shouldAllowSettingStockToZero() {
+        StockAdjustmentRequest request = StockAdjustmentRequest.builder()
+                .operation("SET")
+                .quantity(0)
+                .build();
+
+        when(inventoryRepository.findByProductIdWithLock(1L)).thenReturn(Optional.of(inventory));
+        when(inventoryRepository.save(inventory)).thenReturn(inventory);
+        when(productService.mapToResponse(product)).thenReturn(ProductResponse.builder()
+                .id(1L)
+                .quantity(0)
+                .build());
+
+        ProductResponse response = inventoryService.adjustStock(1L, request);
+
+        assertEquals(0, inventory.getQuantity());
+        assertNotNull(response);
+    }
+
+    @Test
+    @DisplayName("Should reject ADD with non-positive quantity")
+    void shouldRejectAddWithZeroQuantity() {
+        StockAdjustmentRequest request = StockAdjustmentRequest.builder()
+                .operation("ADD")
+                .quantity(0)
+                .build();
+
+        when(inventoryRepository.findByProductIdWithLock(1L)).thenReturn(Optional.of(inventory));
+
+        assertThrows(BadRequestException.class, () -> inventoryService.adjustStock(1L, request));
+    }
+
+    @Test
     @DisplayName("Should throw BadRequestException on invalid operation type")
     void shouldRejectInvalidOperation() {
         StockAdjustmentRequest request = StockAdjustmentRequest.builder()

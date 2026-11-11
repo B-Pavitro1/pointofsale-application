@@ -1,11 +1,22 @@
 // Point of Sale Frontend Application Logic
 
-// Auto-detect API base URL: if served from same origin (e.g. Nginx/Spring Boot), use relative URL; otherwise default to localhost:8080
-const API_BASE_URL = (window.location.port === "8080" || window.location.port === "80" || window.location.port === "443" || window.location.port === "")
-    ? window.location.origin
+// Auto-detect API base URL: If accessed via HTTP/HTTPS, use relative URL (delegating to Nginx reverse proxy); otherwise default to localhost:8080
+const API_BASE_URL = (window.location.protocol.startsWith("http"))
+    ? ""
     : "http://localhost:8080";
 
 const TAX_RATE = 0.08; // 8%
+
+// XSS Sanitization Helper for safely interpolating strings into DOM
+function escapeHtml(str) {
+    if (str === null || str === undefined) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
 
 // App State
 let state = {
@@ -197,12 +208,23 @@ async function loadProducts() {
         populateCategories();
         renderProducts(state.products);
     } catch (err) {
-        container.innerHTML = `
-            <div class="col-12 text-center py-5 text-danger">
-                <i class="bi bi-wifi-off fs-1 d-block mb-2"></i>
-                Failed to connect to POS Backend API. Make sure Spring Boot is running on port 8080.
-            </div>
-        `;
+        if (!state.token && (err.message === "Unauthorized" || err.message.includes("401"))) {
+            container.innerHTML = `
+                <div class="col-12 text-center py-5 text-muted">
+                    <i class="bi bi-lock-fill fs-1 d-block mb-2 text-primary"></i>
+                    <h5 class="fw-bold">Sign-In Required</h5>
+                    <p class="text-secondary mb-3">Please log in to view products and access the register.</p>
+                    <button class="btn btn-primary btn-sm" onclick="handleAuthAction()"><i class="bi bi-box-arrow-in-right me-1"></i> Log In</button>
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <div class="col-12 text-center py-5 text-danger">
+                    <i class="bi bi-wifi-off fs-1 d-block mb-2"></i>
+                    Failed to load product catalog. (${escapeHtml(err.message || "Network error")})
+                </div>
+            `;
+        }
     }
 }
 
@@ -266,11 +288,11 @@ function renderProducts(items) {
                      onclick="${outOfStock ? '' : `addToCart(${p.id})`}">
                     <div class="card-body d-flex flex-column">
                         <div class="d-flex justify-content-between align-items-start mb-2">
-                            <span class="badge bg-light text-secondary border">${p.category}</span>
+                            <span class="badge bg-light text-secondary border">${escapeHtml(p.category)}</span>
                             ${badge}
                         </div>
-                        <h6 class="card-title fw-bold text-dark mb-1 text-truncate">${p.name}</h6>
-                        <small class="text-muted mb-2 font-monospace">SKU: ${p.sku}</small>
+                        <h6 class="card-title fw-bold text-dark mb-1 text-truncate">${escapeHtml(p.name)}</h6>
+                        <small class="text-muted mb-2 font-monospace">SKU: ${escapeHtml(p.sku)}</small>
                         <div class="mt-auto d-flex justify-content-between align-items-center pt-2 border-top">
                             <span class="fs-5 fw-bold text-primary">$${Number(p.price).toFixed(2)}</span>
                             <button class="btn btn-outline-primary btn-sm rounded-circle" ${outOfStock ? 'disabled' : ''} title="Add to Cart">
@@ -479,7 +501,7 @@ function showReceipt(sale) {
     const content = document.getElementById("receiptContent");
     const itemsHtml = sale.items.map(item => `
         <div class="d-flex justify-content-between small">
-            <span>${item.productName} (x${item.quantity})</span>
+            <span>${escapeHtml(item.productName)} (x${item.quantity})</span>
             <span>$${Number(item.subtotal).toFixed(2)}</span>
         </div>
     `).join("");
@@ -573,10 +595,10 @@ async function loadInventory() {
             const isLow = p.quantity <= p.lowStockThreshold;
             return `
                 <tr>
-                    <td class="font-monospace fw-semibold">${p.sku}</td>
-                    <td class="font-monospace text-muted small">${p.barcode || 'N/A'}</td>
-                    <td class="fw-semibold">${p.name}</td>
-                    <td><span class="badge bg-light text-dark border">${p.category}</span></td>
+                    <td class="font-monospace fw-semibold">${escapeHtml(p.sku)}</td>
+                    <td class="font-monospace text-muted small">${p.barcode ? escapeHtml(p.barcode) : 'N/A'}</td>
+                    <td class="fw-semibold">${escapeHtml(p.name)}</td>
+                    <td><span class="badge bg-light text-dark border">${escapeHtml(p.category)}</span></td>
                     <td class="fw-bold text-success">$${Number(p.price).toFixed(2)}</td>
                     <td class="text-muted small">$${Number(p.costPrice).toFixed(2)}</td>
                     <td>

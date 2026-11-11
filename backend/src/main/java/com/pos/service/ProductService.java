@@ -27,7 +27,7 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public List<ProductResponse> getAllActiveProducts() {
-        return productRepository.findByIsActiveTrue().stream()
+        return productRepository.findAllActiveWithInventory().stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -95,8 +95,19 @@ public class ProductService {
             throw new BadRequestException("Product with SKU already exists: " + request.getSku());
         }
 
+        // Check if Barcode changed and already taken
+        if (request.getBarcode() != null && !request.getBarcode().isBlank()) {
+            String newBarcode = request.getBarcode().trim();
+            if ((product.getBarcode() == null || !product.getBarcode().equalsIgnoreCase(newBarcode))
+                    && productRepository.existsByBarcode(newBarcode)) {
+                throw new BadRequestException("Product with Barcode already exists: " + newBarcode);
+            }
+            product.setBarcode(newBarcode);
+        } else {
+            product.setBarcode(null);
+        }
+
         product.setSku(request.getSku().toUpperCase().trim());
-        product.setBarcode(request.getBarcode() != null ? request.getBarcode().trim() : null);
         product.setName(request.getName().trim());
         product.setCategory(request.getCategory().trim());
         product.setPrice(request.getPrice());

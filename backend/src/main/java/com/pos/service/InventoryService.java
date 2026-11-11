@@ -39,6 +39,9 @@ public class InventoryService {
                 .orElseThrow(() -> new ResourceNotFoundException("Inventory not found for product id: " + productId));
 
         if ("ADD".equalsIgnoreCase(request.getOperation())) {
+            if (request.getQuantity() <= 0) {
+                throw new BadRequestException("Quantity to ADD must be at least 1");
+            }
             inventory.setQuantity(inventory.getQuantity() + request.getQuantity());
             inventory.setLastRestockedAt(LocalDateTime.now());
         } else if ("SET".equalsIgnoreCase(request.getOperation())) {

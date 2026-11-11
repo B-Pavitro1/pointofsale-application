@@ -110,4 +110,33 @@ class ProductServiceTest {
             productService.getProductById(999L);
         });
     }
+
+    @Test
+    @DisplayName("Should throw BadRequestException if updated Barcode belongs to another product")
+    void shouldRejectDuplicateBarcodeOnUpdate() {
+        Product existing = Product.builder()
+                .id(1L)
+                .sku("SKU-1")
+                .barcode("11111111")
+                .name("Product 1")
+                .category("Beverages")
+                .price(new BigDecimal("5.00"))
+                .costPrice(new BigDecimal("2.50"))
+                .isActive(true)
+                .build();
+
+        ProductRequest updateReq = ProductRequest.builder()
+                .sku("SKU-1")
+                .barcode("22222222")
+                .name("Product 1 Updated")
+                .category("Beverages")
+                .price(new BigDecimal("5.00"))
+                .costPrice(new BigDecimal("2.50"))
+                .build();
+
+        when(productRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(productRepository.existsByBarcode("22222222")).thenReturn(true);
+
+        assertThrows(BadRequestException.class, () -> productService.updateProduct(1L, updateReq));
+    }
 }

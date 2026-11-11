@@ -16,7 +16,9 @@ target/
 Thumbs.db
 
 # Environment and sensitive files
-*.env*
+.env
+.env.*
+!.env.example
 *.pem
 *.key
 *.id_rsa
@@ -27,7 +29,7 @@ terraform.tfvars
 *.tfstate
 *.tfstate.*
 .terraform/
-.terraform.lock.hcl
+# Keep .terraform.lock.hcl committed to pin provider versions
 
 # Docker
 docker/data/

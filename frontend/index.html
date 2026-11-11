@@ -286,11 +286,12 @@
                             <label class="form-label fw-semibold">Password</label>
                             <input type="password" id="loginPassword" class="form-control" placeholder="Enter password" required>
                         </div>
-                        <div class="text-muted small mb-3">
-                            <strong>Demo Accounts:</strong><br>
-                            - Admin: <code>admin</code> / <code>password123</code><br>
-                            - Cashier: <code>cashier</code> / <code>password123</code><br>
-                            - Stock Mgr: <code>manager</code> / <code>password123</code>
+                        <div class="text-muted small mb-3 p-2 bg-light rounded border">
+                            <i class="bi bi-shield-lock me-1"></i> <strong>Default Credentials (Dev/Evaluation Only):</strong><br>
+                            <span class="badge bg-secondary">Admin</span> <code>admin</code> / <code>password123</code><br>
+                            <span class="badge bg-secondary">Cashier</span> <code>cashier</code> / <code>password123</code><br>
+                            <span class="badge bg-secondary">Manager</span> <code>manager</code> / <code>password123</code><br>
+                            <small class="text-danger d-block mt-1">Change default passwords before staging or production deployment.</small>
                         </div>
                         <button type="submit" class="btn btn-primary w-100 fw-bold" id="loginSubmitBtn">
                             Sign In

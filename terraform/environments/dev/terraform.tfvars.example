@@ -13,4 +13,4 @@ db_instance_class    = "db.t3.micro"
 db_allocated_storage = 20
 db_name              = "posdb"
 db_username          = "posadmin"
-db_password          = "PosSecurePassword123!"
+db_password          = "REPLACE_WITH_YOUR_SECURE_DEV_PASSWORD"

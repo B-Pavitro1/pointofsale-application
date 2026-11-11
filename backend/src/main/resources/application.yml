@@ -19,21 +19,23 @@ server:
     include-message: always
     include-binding-errors: always
 
-# JWT Security Settings
+# JWT Security & CORS Settings
 app:
   jwt:
     secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000} # 24 hours
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8080,http://localhost:80,http://127.0.0.1:3000,http://127.0.0.1:8080}
 
 # Actuator Endpoints for Health & Monitoring
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info
   endpoint:
     health:
-      show-details: always
+      show-details: when-authorized
 
 # Logging
 logging:

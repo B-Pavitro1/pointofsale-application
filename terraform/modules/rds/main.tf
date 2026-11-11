@@ -15,12 +15,12 @@ resource "aws_db_instance" "mysql" {
   vpc_security_group_ids = [var.rds_security_group_id]
 
   publicly_accessible = false
-  multi_az            = false # Single AZ for free-tier / demo economy
-  skip_final_snapshot = true  # Set to true for disposable portfolio environment
-  deletion_protection = false
+  multi_az            = var.multi_az
+  skip_final_snapshot = var.skip_final_snapshot
+  deletion_protection = var.deletion_protection
 
   auto_minor_version_upgrade = true
-  backup_retention_period    = 1 # 1 day backup for demo
+  backup_retention_period    = var.backup_retention_period
 
   tags = {
     Name = "pos-rds-mysql-${var.environment}"

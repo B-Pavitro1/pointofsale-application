@@ -23,7 +23,7 @@ public class ReportService {
         long salesCount = saleRepository.countCompletedSales();
         BigDecimal revenue = saleRepository.sumTotalRevenue();
         long productCount = productRepository.count();
-        long lowStockCount = inventoryRepository.findLowStockItems().size();
+        long lowStockCount = inventoryRepository.countLowStockItems();
 
         return SalesSummaryResponse.builder()
                 .totalSalesCount(salesCount)

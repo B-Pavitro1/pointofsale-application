@@ -22,9 +22,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -55,36 +53,47 @@ public class CheckoutService {
         List<SaleItem> saleItems = new ArrayList<>();
         List<SaleItemResponse> itemResponses = new ArrayList<>();
 
-        // Process and lock each inventory item sequentially
+        // Aggregate duplicate cart items by productId to avoid duplicate lock acquisitions
+        Map<Long, Integer> aggregatedQuantities = new LinkedHashMap<>();
         for (CartItemRequest itemReq : request.getItems()) {
-            Product product = productRepository.findById(itemReq.getProductId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + itemReq.getProductId()));
+            aggregatedQuantities.merge(itemReq.getProductId(), itemReq.getQuantity(), Integer::sum);
+        }
+
+        // Sort product IDs in ascending order to prevent deadlocks across concurrent transactions
+        List<Long> sortedProductIds = new ArrayList<>(aggregatedQuantities.keySet());
+        Collections.sort(sortedProductIds);
+
+        // Process and lock each inventory item in deterministic order
+        for (Long productId : sortedProductIds) {
+            int quantity = aggregatedQuantities.get(productId);
+            Product product = productRepository.findById(productId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + productId));
 
             if (!Boolean.TRUE.equals(product.getIsActive())) {
                 throw new BadRequestException("Cannot purchase inactive product: " + product.getName());
             }
 
-            // Pessimistic write lock on inventory row
+            // Pessimistic write lock on inventory row in deterministic key order
             Inventory inventory = inventoryRepository.findByProductIdWithLock(product.getId())
                     .orElseThrow(() -> new ResourceNotFoundException("Inventory record not found for product: " + product.getName()));
 
-            if (inventory.getQuantity() < itemReq.getQuantity()) {
+            if (inventory.getQuantity() < quantity) {
                 throw new InsufficientStockException(String.format(
                         "Insufficient stock for '%s' (SKU: %s). Requested: %d, Available: %d",
-                        product.getName(), product.getSku(), itemReq.getQuantity(), inventory.getQuantity()
+                        product.getName(), product.getSku(), quantity, inventory.getQuantity()
                 ));
             }
 
             // Deduct stock atomically within transaction
-            inventory.setQuantity(inventory.getQuantity() - itemReq.getQuantity());
+            inventory.setQuantity(inventory.getQuantity() - quantity);
             inventoryRepository.save(inventory);
 
-            BigDecimal lineTotal = product.getPrice().multiply(BigDecimal.valueOf(itemReq.getQuantity()));
+            BigDecimal lineTotal = product.getPrice().multiply(BigDecimal.valueOf(quantity));
             subtotal = subtotal.add(lineTotal);
 
             SaleItem saleItem = SaleItem.builder()
                     .product(product)
-                    .quantity(itemReq.getQuantity())
+                    .quantity(quantity)
                     .unitPrice(product.getPrice())
                     .subtotal(lineTotal)
                     .build();
@@ -94,7 +103,7 @@ public class CheckoutService {
                     .productId(product.getId())
                     .productSku(product.getSku())
                     .productName(product.getName())
-                    .quantity(itemReq.getQuantity())
+                    .quantity(quantity)
                     .unitPrice(product.getPrice())
                     .subtotal(lineTotal)
                     .build());
@@ -121,10 +130,10 @@ public class CheckoutService {
         // Authorize payment via Mock Payment Service
         String txnRef = paymentService.processPayment(request.getPaymentMethod(), totalAmount);
 
-        // Generate unique invoice number: INV-YYYYMMDD-XXXX
+        // Generate collision-resistant unique invoice number: INV-YYYYMMDD-XXXXXXXX
         String datePart = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-        int randomSuffix = ThreadLocalRandom.current().nextInt(1000, 9999);
-        String invoiceNumber = "INV-" + datePart + "-" + randomSuffix;
+        String entropySuffix = UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+        String invoiceNumber = "INV-" + datePart + "-" + entropySuffix;
 
         Sale sale = Sale.builder()
                 .invoiceNumber(invoiceNumber)

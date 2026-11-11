@@ -180,9 +180,18 @@ pipeline {
                 echo 'Verifying application health check and registering CloudWatch metrics...'
                 script {
                     echo "Validating healthcheck on target endpoint..."
-                    // Post-deployment smoke test
                     sh '''
-                        echo "Deployment verified. Actuator health status: UP"
+                        for i in $(seq 1 12); do
+                            STATUS=$(curl -s --fail http://127.0.0.1:8080/actuator/health | grep '"status":"UP"' || true)
+                            if [ -n "$STATUS" ]; then
+                                echo "Deployment verified successfully: Actuator health status is UP."
+                                exit 0
+                            fi
+                            echo "Waiting for application startup... retry $i/12"
+                            sleep 5
+                        done
+                        echo "Health check failed after 60 seconds!"
+                        exit 1
                     '''
                 }
             }

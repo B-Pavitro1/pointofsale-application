@@ -13,4 +13,4 @@ db_host=YOUR_RDS_MYSQL_HOST
 db_port=3306
 db_name=posdb
 db_user=posadmin
-db_password=PosSecurePassword123!
+# db_password provided securely via vault, Jenkins credentials, or extra-vars

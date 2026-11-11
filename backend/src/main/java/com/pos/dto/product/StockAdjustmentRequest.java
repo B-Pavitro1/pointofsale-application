@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 public class StockAdjustmentRequest {
 
     @NotNull(message = "Quantity is required")
-    @Min(value = 1, message = "Adjustment quantity must be at least 1")
+    @Min(value = 0, message = "Adjustment quantity cannot be negative")
     private Integer quantity;
 
     @NotBlank(message = "Operation type is required (ADD or SET)")

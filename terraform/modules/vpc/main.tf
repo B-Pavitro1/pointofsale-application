@@ -79,6 +79,47 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
+# Elastic IP for NAT Gateway
+resource "aws_eip" "nat" {
+  domain = "vpc"
+  tags = {
+    Name = "pos-nat-eip-${var.environment}"
+  }
+}
+
+# NAT Gateway (Single NAT gateway in public subnet 1 for cost-effective outbound egress)
+resource "aws_nat_gateway" "nat" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public[0].id
+
+  tags = {
+    Name = "pos-nat-gw-${var.environment}"
+  }
+
+  depends_on = [aws_internet_gateway.igw]
+}
+
+# Private Route Table for Application Subnets (Routes 0.0.0.0/0 via NAT Gateway)
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.nat.id
+  }
+
+  tags = {
+    Name = "pos-private-rt-${var.environment}"
+  }
+}
+
+# Private App Route Table Associations
+resource "aws_route_table_association" "private_app" {
+  count          = length(var.private_app_subnet_cidrs)
+  subnet_id      = aws_subnet.private_app[count.index].id
+  route_table_id = aws_route_table.private.id
+}
+
 # Private Database Subnet Group for RDS
 resource "aws_db_subnet_group" "rds" {
   name       = "pos-rds-subnet-group-${var.environment}"

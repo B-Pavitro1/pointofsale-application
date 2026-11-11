@@ -29,4 +29,10 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
      */
     @Query("SELECT i FROM Inventory i WHERE i.quantity <= i.lowStockThreshold")
     List<Inventory> findLowStockItems();
+
+    /**
+     * Efficiently counts all inventory rows where current quantity is less than or equal to threshold.
+     */
+    @Query("SELECT COUNT(i) FROM Inventory i WHERE i.quantity <= i.lowStockThreshold")
+    long countLowStockItems();
 }

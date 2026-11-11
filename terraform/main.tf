@@ -32,13 +32,17 @@ module "ec2" {
 
 # 4. Database Module (Amazon RDS MySQL in Private DB Subnet)
 module "rds" {
-  source                = "./modules/rds"
-  environment           = var.environment
-  db_subnet_group_name  = module.vpc.db_subnet_group_name
-  rds_security_group_id = module.security_groups.rds_security_group_id
-  db_instance_class     = var.db_instance_class
-  db_allocated_storage  = var.db_allocated_storage
-  db_name               = var.db_name
-  db_username           = var.db_username
-  db_password           = var.db_password
+  source                  = "./modules/rds"
+  environment             = var.environment
+  db_subnet_group_name    = module.vpc.db_subnet_group_name
+  rds_security_group_id   = module.security_groups.rds_security_group_id
+  db_instance_class       = var.db_instance_class
+  db_allocated_storage    = var.db_allocated_storage
+  db_name                 = var.db_name
+  db_username             = var.db_username
+  db_password             = var.db_password
+  multi_az                = var.multi_az
+  backup_retention_period = var.backup_retention_period
+  skip_final_snapshot     = var.skip_final_snapshot
+  deletion_protection     = var.deletion_protection
 }

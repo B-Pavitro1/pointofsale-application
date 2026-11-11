@@ -1,0 +1,20 @@
+# Production Environment Terraform Variables (High Availability & Production Hardened)
+aws_region          = "ap-southeast-2"
+environment         = "prod"
+key_name            = "pos-prod-key"
+ssh_allowed_ip      = "YOUR_CORP_BASTION_CIDR/32"
+
+# Production Compute Sizing
+app_instance_type     = "t3.medium"
+jenkins_instance_type = "t3.large"
+
+# Production Database Configuration
+db_instance_class       = "db.r6g.large"
+db_allocated_storage    = 100
+db_name                 = "posdb"
+db_username             = "posadmin_prod"
+db_password             = "REPLACE_WITH_STRONG_PRODUCTION_SECRET"
+multi_az                = true
+backup_retention_period = 30
+skip_final_snapshot     = false
+deletion_protection     = true
