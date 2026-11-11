@@ -1,12 +1,12 @@
 # Example Terraform variables for Development / Demo environment
 aws_region          = "ap-southeast-2"
 environment         = "dev"
-key_name            = "pos-deployer-key"
+key_name            = "aws-login"
 ssh_allowed_ip      = "0.0.0.0/0" # Change to your_ip/32 for enhanced security
 
 # Compute Sizing (Free-tier friendly)
 app_instance_type     = "t3.micro"
-jenkins_instance_type = "t3.medium" # Minimum 4GB RAM recommended for Jenkins + SonarQube
+jenkins_instance_type = "t3.micro" # Free-Tier eligible with automated 4GB swap space
 
 # Database Credentials
 db_instance_class    = "db.t3.micro"
@@ -14,3 +14,6 @@ db_allocated_storage = 20
 db_name              = "posdb"
 db_username          = "posadmin"
 db_password          = "REPLACE_WITH_YOUR_SECURE_DEV_PASSWORD"
+
+# Optional: Set a specific AMI ID if your IAM user lacks ec2:DescribeImages permission
+# ami_id             = "ami-04f5097681773b989" # Ubuntu 22.04 LTS in ap-southeast-2

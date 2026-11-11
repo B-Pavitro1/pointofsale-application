@@ -53,15 +53,21 @@ variable "app_instance_type" {
 }
 
 variable "jenkins_instance_type" {
-  description = "EC2 instance type for Jenkins CI & SonarQube"
+  description = "EC2 instance type for Jenkins CI & SonarQube (Free-tier eligible)"
   type        = string
-  default     = "t3.medium"
+  default     = "t3.micro"
 }
 
 variable "key_name" {
   description = "AWS EC2 Key Pair name for SSH authentication"
   type        = string
-  default     = "pos-deployer-key"
+  default     = "aws-login"
+}
+
+variable "ami_id" {
+  description = "Optional custom AMI ID for EC2 instances. If empty, dynamically discovers latest Ubuntu 22.04 LTS."
+  type        = string
+  default     = ""
 }
 
 # RDS Configuration

@@ -28,6 +28,7 @@ module "ec2" {
   app_instance_type         = var.app_instance_type
   jenkins_instance_type     = var.jenkins_instance_type
   key_name                  = var.key_name
+  ami_id                    = var.ami_id
 }
 
 # 4. Database Module (Amazon RDS MySQL in Private DB Subnet)

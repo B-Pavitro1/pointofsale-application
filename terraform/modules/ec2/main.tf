@@ -1,5 +1,6 @@
-# Lookup Ubuntu 22.04 LTS AMI
+# Lookup Ubuntu 22.04 LTS AMI (only queried if ami_id is not explicitly provided)
 data "aws_ami" "ubuntu" {
+  count       = var.ami_id != "" ? 0 : 1
   most_recent = true
   owners      = ["099720109477"] # Canonical
 
@@ -51,7 +52,7 @@ resource "aws_iam_instance_profile" "ec2_profile" {
 
 # 1. Application Server EC2 (Spring Boot + Nginx)
 resource "aws_instance" "app_server" {
-  ami                  = data.aws_ami.ubuntu.id
+  ami                  = var.ami_id != "" ? var.ami_id : data.aws_ami.ubuntu[0].id
   instance_type        = var.app_instance_type
   subnet_id            = var.public_subnet_id
   iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
@@ -77,7 +78,7 @@ resource "aws_instance" "app_server" {
 
 # 2. CI/CD Automation Server EC2 (Jenkins + SonarQube)
 resource "aws_instance" "jenkins_server" {
-  ami                  = data.aws_ami.ubuntu.id
+  ami                  = var.ami_id != "" ? var.ami_id : data.aws_ami.ubuntu[0].id
   instance_type        = var.jenkins_instance_type
   subnet_id            = var.public_subnet_id
   iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
@@ -86,6 +87,20 @@ resource "aws_instance" "jenkins_server" {
   vpc_security_group_ids = [
     var.jenkins_security_group_id
   ]
+
+  user_data = <<-EOF
+              #!/bin/bash
+              # Allocate 4GB swap space to enable running Jenkins + SonarQube on Free-Tier t3.micro
+              if [ ! -f /swapfile ]; then
+                fallocate -l 4G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=4096
+                chmod 600 /swapfile
+                mkswap /swapfile
+                swapon /swapfile
+                echo '/swapfile none swap sw 0 0' >> /etc/fstab
+                sysctl vm.swappiness=10
+                echo 'vm.swappiness=10' >> /etc/sysctl.conf
+              fi
+              EOF
 
   root_block_device {
     volume_size           = 30

@@ -1,9 +1,9 @@
 # Staging Environment Inventory
 [ci_servers]
-jenkins-ci ansible_host=YOUR_JENKINS_PUBLIC_IP ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/pos-deployer-key.pem
+jenkins-ci ansible_host=YOUR_JENKINS_PUBLIC_IP ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/aws-login.pem
 
 [app_servers]
-pos-app ansible_host=YOUR_APP_PUBLIC_IP ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/pos-deployer-key.pem
+pos-app ansible_host=YOUR_APP_PUBLIC_IP ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/aws-login.pem
 
 [all:vars]
 ansible_python_interpreter=/usr/bin/python3
